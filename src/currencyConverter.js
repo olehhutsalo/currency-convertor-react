@@ -8,83 +8,100 @@ export default class extends React.PureComponent {
     constructor(props) {
         super(props);
         this.state = {
-            baseCurrency: 'USD',
-            baseAmount: 1000,
-            targetCurrency: 'ILS',
-            targetAmount: null,
+            topCurrency: "USD",
+            topAmount: "1000",
+            bottomCurrency: "ILS",
+            bottomAmount: "",
             rates: null,
             loading: true,
             error: false,
         }
     }
-
-    handleTargetCurrencyChange = (value) => {
-        this.setState({targetCurrency: value}, () => this.convertCurrency('target'));
-        
-    }
-
-    handleBaseCurrencyChange = (value) => {
-        this.setState({baseCurrency: value}, () => this.convertCurrency('base'));
-    }
-
-    handleBaseAmountChange = value => {
-        this.setState({baseAmount: value}, () => this.convertCurrency('base'));
-    }
-
-    handleTargetAmountChange = value => {
-        this.setState({targetAmount: value}, () => this.convertCurrency('target'));
-    }
-
+    
+    handleTopCurrencyChange = value => {
+        // New fetching of rates will be initiated in componentDidUpdate()
+        this.setState({topCurrency: value});
+    };
+    
+    handleBottomCurrencyChange = value => {
+        this.setState({bottomCurrency: value}, () => this.convertCurrency('bottom'));
+    };
+    
+    handleTopAmountChange = ({target: {value}}) => {
+        this.setState({topAmount: value}, () => this.convertCurrency('top'));
+    };
+    
+    handleBottomAmountChange = ({target: {value}}) => {
+        this.setState({bottomAmount: value}, () => this.convertCurrency('bottom'));
+    };
+    
     fetchData = () => {
-        const {baseCurrency} = this.state;
+        const {topCurrency} = this.state;
         this.setState({loading: true});
-        API.rates.getLatesRates(baseCurrency)
+        API.rates.getLatesRates(topCurrency)
             .then(resp => {
-                this.setState({rates: resp.rates, loading: false}, () => this.convertCurrency('base'))
+                this.setState({rates: resp.rates, loading: false}, () => this.convertCurrency('top'))
             })
-    }
-
+    };
+    
     convertCurrency(origin){
-        console.log('HERE')
-        const {targetCurrency, baseCurrency, baseAmount, targetAmount, rates} = this.state;
-        if (origin === 'base'){
-            const nextTargetValue = rates[targetCurrency] * baseAmount;
-            this.setState({targetAmount: nextTargetValue})
+        const {topCurrency, bottomCurrency, topAmount, bottomAmount, rates} = this.state;
+        // debugger
+        if (origin === 'top'){
+            const nextBottomAmount = rates[bottomCurrency] * +topAmount;
+            this.setState({bottomAmount: +nextBottomAmount.toFixed(2)})
         }
-        if (origin === 'target'){
-            const nextBaseValue = rates[baseCurrency] * targetAmount;
-            this.setState({baseAmount: nextBaseValue})
+        if (origin === 'bottom'){
+            const nextTopAmount = rates[bottomCurrency] * +bottomAmount;
+            this.setState({topAmount: +nextTopAmount.toFixed(2)})
         }
     }
+    
     componentDidMount () {
         this.fetchData();
     }
-
-    // componentDidUpdate (prevProps, prevState) {
-    //     if (prevState.targetCurrency !== this.state.targertCurrency) {
-    //         this.convertCurrency('target');
-    //     }
-    //     if (prevState.baseCurrency !== this.state.baseCurrency) {
-    //         this.convertCurrency('base');
-    //     }
-    // }
-
+    
+    componentDidUpdate(prevProps, prevState) {
+        if (prevState.topCurrency !== this.state.topCurrency) this.fetchData();
+    }
+    
     render() {
-        const {targetCurrency, baseCurrency, baseAmount, targetAmount, loading, rates} = this.state;
+        const {topCurrency, bottomCurrency, topAmount, bottomAmount, loading, rates} = this.state;
         const {} = this.props;
-        if (loading || !rates) return (<div>Loading...</div>);
-        const ratesArr = Object.keys(rates);
+        const ratesArr = typeof rates === 'object' && rates !== null? Object.keys(rates) : [];
         return (
             <React.Fragment>
-               <div>
-                   <Input value={baseAmount} onChange={this.handleBaseAmountChange} style={{width: '33%'}}/>
-                    <Select defaultValue={baseCurrency} style={{ width: '66%' }} onChange={this.handleBaseCurrencyChange}>
+                <div>
+                    <Input
+                        type="number"
+                        disabled={loading}
+                        value={Number.isNaN(topAmount)? '' : topAmount}
+                        onChange={this.handleTopAmountChange}
+                        style={{width: '33%'}}
+                    />
+                    <Select
+                        disabled={loading}
+                        defaultValue={topCurrency}
+                        style={{ width: '66%' }}
+                        onChange={this.handleTopCurrencyChange}
+                    >
                         {ratesArr.map(currency => (<Option key={currency}  value={currency}>{currency}</Option>))}
                     </Select>
                 </div>
-               <div>
-                   <Input value={targetAmount} onChange={this.handleTargetAmountChange} style={{width: '33%'}}/>
-                    <Select defaultValue={targetCurrency} style={{ width: '66%' }} onChange={this.handleTargetCurrencyChange}>
+                <div>
+                    <Input
+                        type="number"
+                        disabled={loading}
+                        value={Number.isNaN(bottomAmount)? '' : bottomAmount}
+                        onChange={this.handleBottomAmountChange}
+                        style={{width: '33%'}}
+                    />
+                    <Select
+                        disabled={loading}
+                        defaultValue={bottomCurrency}
+                        style={{ width: '66%' }}
+                        onChange={this.handleBottomCurrencyChange}
+                    >
                         {ratesArr.map(currency => (<Option key={currency} value={currency}>{currency}</Option>))}
                     </Select>
                 </div>
